@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>Canvas</title>
+	<style>
+		@font-face {
+			font-family: Splatfont2;
+			src: url(Splatfont2.ttf);
+		}
+
+		@font-face {
+			font-family: Paintball;
+			src: url(Paintball.otf);
+		}
+
+
+		* {
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			width: 100vw;
+			height: 100vh;
+			padding: 0;
+			margin: 0;
+			overflow: hidden;
+			color: white;
+			background-color: #36393E;
+		}
+
+		#text {
+			width: 300px;
+			height: 75px;
+			resize: none;
+		}
+
+	</style>
+</head>
+
+<body>
+	<label>Offset width</label><input type="number" id="offset_width" value="0"/><br />
+	<label>Offset x</label><input type="number" id="offset_x" value="0"/><br />
+	<label>Offset y</label><input type="number" id="offset_y" value="0"/><br />
+	<!--<label>Icon url</label><input type="url" id="icon_url">-->
+	<label>Icon file</label><input type="file" id="icon_file" accept="image/*"><br />
+	<label>Name color</label><input type="color" id="color" value="#ffffff"><br />
+	<label>Name</label><input type="text" id="name" value="Cephalopod" /><br />
+	<label>Text</label><br /><textarea id="text" >Cephalopod sound</textarea><br />
+	<img id="bg" src="BG.png" style="display: none">
+	<img id="render" width="800" />
+	<script src="script.js"></script>
+</body>
+
+</html>
