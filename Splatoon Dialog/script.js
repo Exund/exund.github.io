@@ -5,6 +5,7 @@ function substring(string, start, end) {
 
 const preset_list = document.getElementById("preset_list");
 const icon_priority = document.getElementById("icon_priority");
+const icon_glitch = document.getElementById("icon_glitch");
 const bg_color = document.getElementById("bg_color");
 const color = document.getElementById("color");
 const name = document.getElementById("name");
@@ -14,6 +15,7 @@ const render = document.getElementById("render");
 const bg = document.createElement("img");
 const dialog_shape = document.createElement("img");
 const hero_icon_img = document.createElement("img");
+const hero_icon_glitch_img = document.createElement("img");
 
 const offsets = {
 	width: 0,
@@ -178,7 +180,7 @@ presets.forEach(p => {
 	preset_list.add(opt);
 });
 
-preset_list.onchange = function() {
+preset_list.onchange = function () {
 	bg.src = presets[this.selectedIndex].background_url;
 	dialog_shape.src = presets[this.selectedIndex].shape_url;
 }
@@ -189,7 +191,7 @@ const canvas = document.createElement("canvas");
 const ctx = canvas.getContext("2d");
 
 function generate() {
-	if(!(bg.complete && bg.naturalHeight !== 0)) return;
+	if (!(bg.complete && bg.naturalHeight !== 0)) return;
 
 	canvas.width = bg.naturalWidth;
 	canvas.height = bg.naturalHeight;
@@ -201,13 +203,12 @@ function generate() {
 
 	ctx.fillStyle = bg_color.value;
 	ctx.fillRect(preset.icon.position.x, preset.icon.position.y, preset.icon.size.width, preset.icon.size.height);
-	
-	const width = preset.icon.size.width + offsets.width;
 
-	if(icon_priority.value == 0) {
+	if(icon_glitch.value > 0) generate_glitch(preset);
+
+	if (icon_priority.value == 0) {
 		try {
-			const height = width * hero_icon_img.height / hero_icon_img.width;
-			ctx.drawImage(hero_icon_img, preset.icon.position.x - offsets.width / 2 + offsets.x, preset.icon.position.y + offsets.y + (preset.icon.size.height - height) / 2, width, height);
+			draw_icon(preset);
 		} catch (e) { }
 	}
 
@@ -216,10 +217,9 @@ function generate() {
 	ctx.globalCompositeOperation = "source-over";
 	ctx.drawImage(bg, 0, 0);
 
-	if(icon_priority.value > 0) {
+	if (icon_priority.value > 0) {
 		try {
-			const height = width * hero_icon_img.height / hero_icon_img.width;
-			ctx.drawImage(hero_icon_img, preset.icon.position.x - offsets.width / 2 + offsets.x, preset.icon.position.y + offsets.y + (preset.icon.size.height - height) / 2, width, height);
+			draw_icon(preset);
 		} catch (e) { }
 	}
 
@@ -229,7 +229,7 @@ function generate() {
 	ctx.textBaseline = preset.name.baseline;
 	ctx.fillStyle = color.value;
 	let name_width = ctx.measureText(name.value).width;
-	while(name_width > preset.name.max_width) {
+	while (name_width > preset.name.max_width) {
 		ctx.font = `${--name_font_size}px Paintball`;
 		name_width = ctx.measureText(name.value).width;
 	}
@@ -248,6 +248,70 @@ function generate() {
 	});
 
 	render.src = canvas.toDataURL();
+}
+
+const icon_canvas = document.createElement("canvas");
+const icon_ctx = icon_canvas.getContext("2d");
+
+let fill = "transparent";
+function generate_glitch(preset) {
+	//if(hero_icon_glitch_img.src != "") hero_icon_img.src = hero_icon_glitch_img.src;
+	const glitch_offset = parseInt(icon_glitch.value);
+	const width = preset.icon.size.width + offsets.width;
+	if(hero_icon_img.width == 0) return;
+	const height = width * hero_icon_img.height / hero_icon_img.width;
+	icon_canvas.width = width + glitch_offset * 2;
+	icon_canvas.height = height;
+	icon_ctx.clearRect(0, 0, icon_canvas.width, icon_canvas.height);
+	icon_ctx.fillStyle = fill;
+	icon_ctx.fillRect(0, 0, icon_canvas.width, icon_canvas.height);
+	icon_ctx.drawImage(hero_icon_img, glitch_offset, 0, width, height);
+	
+	const original_data = icon_ctx.getImageData(0, 0, icon_canvas.width, icon_canvas.height).data;
+
+	const mapped = original_data.map((v, i, a) => {
+		if(i % 4 == 2) {
+			let oi = i - 4 * glitch_offset;
+
+			if(oi < 0) return v;
+			return a[oi]
+		}
+		if(i % 4 == 1) {
+			return v;
+		}
+		if(i % 4 == 0) {
+			let x = Math.floor(i/4) % icon_canvas.width;
+			let oi = i + 4 * glitch_offset;
+
+			if(x + glitch_offset > icon_canvas.width) return v;
+			return a[oi]
+		}
+		return v;
+	}).map((v, i, a) => {
+		if(i % 4 == 3) {
+			return a[i - 3] + a[i - 2] + a[i - 1] == 0 ? 0 : 255;
+		}
+		return v;
+	});
+
+	icon_ctx.fillStyle = fill;
+	icon_ctx.clearRect(0, 0, icon_canvas.width, icon_canvas.height);
+	
+	//icon_ctx.drawImage(hero_icon_img, glitch_offset, 0, width, height);
+	icon_ctx.putImageData(new ImageData(mapped, icon_canvas.width, icon_canvas.height), 0, 0);
+
+	hero_icon_glitch_img.src = icon_canvas.toDataURL();
+}
+
+function draw_icon(preset) {
+	const width = preset.icon.size.width + offsets.width;
+	const height = width * hero_icon_img.height / hero_icon_img.width;
+	if(icon_glitch.value > 0 && hero_icon_glitch_img.complete && hero_icon_glitch_img.naturalHeight != 0) {	
+		ctx.drawImage(hero_icon_glitch_img, preset.icon.position.x - offsets.width / 2 + offsets.x + (width - hero_icon_glitch_img.width)/2, preset.icon.position.y + offsets.y + (preset.icon.size.height - height) / 2, hero_icon_glitch_img.width, hero_icon_glitch_img.height);
+		//hero_icon_img.src = hero_icon;
+	} else {
+		ctx.drawImage(hero_icon_img, preset.icon.position.x - offsets.width / 2 + offsets.x, preset.icon.position.y + offsets.y + (preset.icon.size.height - height) / 2, width, height);
+	}
 }
 
 let hero_icon = "";
