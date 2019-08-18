@@ -17,7 +17,6 @@
 			src: url(Paintball.otf);
 		}
 
-
 		* {
 			box-sizing: border-box;
 		}
@@ -32,27 +31,50 @@
 			color: white;
 			background-color: #36393E;
 		}
+		
+		input[type="color"] {
+			width: auto;
+		}
+
+		#main {
+			display: grid;
+			justify-items: center;
+		}
+
+		#option_grid {
+			display: grid;
+			grid-template-columns: 200px 200px;
+			align-items: center;
+		}
 
 		#text {
-			width: 300px;
 			height: 75px;
 			resize: none;
 		}
 
+		#render {
+			max-width: 100%;
+		}
 	</style>
 </head>
 
 <body>
-	<label>Offset width</label><input type="number" id="offset_width" value="0"/><br />
-	<label>Offset x</label><input type="number" id="offset_x" value="0"/><br />
-	<label>Offset y</label><input type="number" id="offset_y" value="0"/><br />
-	<!--<label>Icon url</label><input type="url" id="icon_url">-->
-	<label>Icon file</label><input type="file" id="icon_file" accept="image/*"><br />
-	<label>Name color</label><input type="color" id="color" value="#ffffff"><br />
-	<label>Name</label><input type="text" id="name" value="Cephalopod" /><br />
-	<label>Text</label><br /><textarea id="text" >Cephalopod sound</textarea><br />
-	<img id="bg" src="BG.png" style="display: none">
-	<img id="render" width="800" />
+	<div id="main">
+		<div id="option_grid">
+			<label>Preset</label><select id="preset_list"></select>
+			<label>Offset width</label><input type="number" id="offset_width" value="0"/>
+			<label>Offset x</label><input type="number" id="offset_x" value="0"/>
+			<label>Offset y</label><input type="number" id="offset_y" value="0"/>
+			<!--<label>Icon url</label><input type="url" id="icon_url">-->
+			<label>Icon file</label><input type="file" id="icon_file" accept="image/*">
+			<label>Icon priority</label><input type="number" id="icon_priority" value="0">
+			<label>Icon background color</label><input type="color" id="bg_color" value="#ffffff">
+			<label>Name color</label><input type="color" id="color" value="#ffffff">
+			<label>Name</label><input type="text" id="name" value="Cephalopod" />
+			<label>Text</label><textarea id="text">Cephalopod sound</textarea>
+		</div>
+		<img id="render"/>
+	</div>
 	<script src="script.js"></script>
 </body>
 
