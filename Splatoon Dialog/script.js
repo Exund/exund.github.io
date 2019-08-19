@@ -204,7 +204,7 @@ function generate() {
 	ctx.fillStyle = bg_color.value;
 	ctx.fillRect(preset.icon.position.x, preset.icon.position.y, preset.icon.size.width, preset.icon.size.height);
 
-	if(icon_glitch.value > 0) generate_glitch(preset);
+	if (icon_glitch.value > 0) generate_glitch(preset);
 
 	if (icon_priority.value == 0) {
 		try {
@@ -258,45 +258,54 @@ function generate_glitch(preset) {
 	//if(hero_icon_glitch_img.src != "") hero_icon_img.src = hero_icon_glitch_img.src;
 	const glitch_offset = parseInt(icon_glitch.value);
 	const width = preset.icon.size.width + offsets.width;
-	if(hero_icon_img.width == 0) return;
+	if (hero_icon_img.width == 0) return;
 	const height = width * hero_icon_img.height / hero_icon_img.width;
 	icon_canvas.width = width + glitch_offset * 2;
 	icon_canvas.height = height;
 	icon_ctx.clearRect(0, 0, icon_canvas.width, icon_canvas.height);
-	icon_ctx.fillStyle = fill;
+	icon_ctx.fillStyle = "transparent";
 	icon_ctx.fillRect(0, 0, icon_canvas.width, icon_canvas.height);
+	icon_ctx.drawImage(hero_icon_img, 0, 0, width, height);
 	icon_ctx.drawImage(hero_icon_img, glitch_offset, 0, width, height);
-	
+	icon_ctx.drawImage(hero_icon_img, 2 * glitch_offset, 0, width, height);
+
+	icon_ctx.globalCompositeOperation = "source-in";
+	icon_ctx.fillStyle = bg_color.value;
+	icon_ctx.fillRect(0, 0, icon_canvas.width, icon_canvas.height);
+	icon_ctx.globalCompositeOperation = "source-over";
+
+	icon_ctx.drawImage(hero_icon_img, glitch_offset, 0, width, height);
+
 	const original_data = icon_ctx.getImageData(0, 0, icon_canvas.width, icon_canvas.height).data;
 
 	const mapped = original_data.map((v, i, a) => {
-		if(i % 4 == 2) {
+		if (i % 4 == 2) {
 			let oi = i - 4 * glitch_offset;
 
-			if(oi < 0) return v;
+			if (oi < 0) return 0;
 			return a[oi]
 		}
-		if(i % 4 == 1) {
+		if (i % 4 == 1) {
 			return v;
 		}
-		if(i % 4 == 0) {
-			let x = Math.floor(i/4) % icon_canvas.width;
+		if (i % 4 == 0) {
+			let x = Math.floor(i / 4) % icon_canvas.width;
 			let oi = i + 4 * glitch_offset;
 
-			if(x + glitch_offset > icon_canvas.width) return v;
+			if (x + glitch_offset > icon_canvas.width) return 0;
 			return a[oi]
 		}
 		return v;
-	}).map((v, i, a) => {
+	});/*.map((v, i, a) => {
 		if(i % 4 == 3) {
 			return a[i - 3] + a[i - 2] + a[i - 1] == 0 ? 0 : 255;
 		}
 		return v;
-	});
+	});*/
 
-	icon_ctx.fillStyle = fill;
+	icon_ctx.fillStyle = "transparent";
 	icon_ctx.clearRect(0, 0, icon_canvas.width, icon_canvas.height);
-	
+
 	//icon_ctx.drawImage(hero_icon_img, glitch_offset, 0, width, height);
 	icon_ctx.putImageData(new ImageData(mapped, icon_canvas.width, icon_canvas.height), 0, 0);
 
@@ -306,8 +315,8 @@ function generate_glitch(preset) {
 function draw_icon(preset) {
 	const width = preset.icon.size.width + offsets.width;
 	const height = width * hero_icon_img.height / hero_icon_img.width;
-	if(icon_glitch.value > 0 && hero_icon_glitch_img.complete && hero_icon_glitch_img.naturalHeight != 0) {	
-		ctx.drawImage(hero_icon_glitch_img, preset.icon.position.x - offsets.width / 2 + offsets.x + (width - hero_icon_glitch_img.width)/2, preset.icon.position.y + offsets.y + (preset.icon.size.height - height) / 2, hero_icon_glitch_img.width, hero_icon_glitch_img.height);
+	if (icon_glitch.value > 0 && hero_icon_glitch_img.complete && hero_icon_glitch_img.naturalHeight != 0) {
+		ctx.drawImage(hero_icon_glitch_img, preset.icon.position.x - offsets.width / 2 + offsets.x + (width - hero_icon_glitch_img.width) / 2, preset.icon.position.y + offsets.y + (preset.icon.size.height - height) / 2, hero_icon_glitch_img.width, hero_icon_glitch_img.height);
 		//hero_icon_img.src = hero_icon;
 	} else {
 		ctx.drawImage(hero_icon_img, preset.icon.position.x - offsets.width / 2 + offsets.x, preset.icon.position.y + offsets.y + (preset.icon.size.height - height) / 2, width, height);

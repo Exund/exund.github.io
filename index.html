@@ -1,14 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta http-equiv="X-UA-Compatible" content="ie=edge">
-	<title>Document</title>
+	<title>Home</title>
+	<style>
+		* {
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			width: 100%;
+			height: 100%;
+			max-width: 100%;
+			max-height: 100%;
+			padding: 0;
+			margin: 0;
+			background-color: #202225;
+			color: white;
+		}
+
+		a {
+			background-color: #40444b;
+			border-radius: 15px;
+			height: 30px;
+			text-decoration: none;
+			color: inherit;
+			padding: 5px;
+			width: 300px;
+		}
+
+		.grid {
+			display: grid;
+			text-align: center;
+			vertical-align: middle;
+			justify-items: center;
+		}
+	</style>
 </head>
+
 <body>
-	<script>
-		location = "Splatoon%20Dialog/index.html";
-	</script>
+	<div class="grid" style="top: 50%;position: relative;transform: translate(0, -50%);">
+		<h1>Exund's Pages</h1>
+		<div class="grid">
+			<a href="Splatoon Dialog/index.html">Splatoon Textbox Generator</a><br />
+			<a href="MusicVisualizer/index.html">Music Visualizer</a>
+		</div>
+	</div>
 </body>
+
 </html>
