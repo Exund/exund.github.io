@@ -6,6 +6,8 @@ function substring(string, start, end) {
 const preset_list = document.getElementById("preset_list");
 const icon_priority = document.getElementById("icon_priority");
 const icon_glitch = document.getElementById("icon_glitch");
+const icon_horiz = document.getElementById("icon_horiz");
+const h_offsets = document.getElementById("h_offsets");
 const bg_color = document.getElementById("bg_color");
 const color = document.getElementById("color");
 const name = document.getElementById("name");
@@ -204,7 +206,12 @@ function generate() {
 	ctx.fillStyle = bg_color.value;
 	ctx.fillRect(preset.icon.position.x, preset.icon.position.y, preset.icon.size.width, preset.icon.size.height);
 
-	if (icon_glitch.value > 0) generate_glitch(preset);
+	if(hero_icon_img.width !== 0) {
+		if(h_offsets.value > 0) generate_hoffsets(preset);
+		if(icon_glitch.value > 0) generate_glitch(preset);
+
+		hero_icon_glitch_img.src = temp_canvas.toDataURL();
+	}	
 
 	if (icon_priority.value == 0) {
 		try {
@@ -250,73 +257,134 @@ function generate() {
 	render.src = canvas.toDataURL();
 }
 
+const temp_canvas = document.createElement("canvas");
+const temp_ctx = temp_canvas.getContext("2d");
+
 const icon_canvas = document.createElement("canvas");
 const icon_ctx = icon_canvas.getContext("2d");
 
+let prev_hoa = 0;
+let prev_height = 0;
+let horizontal_offsets = [];
+let max_ho = 0;
+function generate_hoffsets(preset) {
+	const width = preset.icon.size.width + offsets.width;
+	const height = Math.floor(width * hero_icon_img.height / hero_icon_img.width);
+
+	if(prev_hoa != h_offsets.value || prev_height != height) {
+		prev_height = height;
+		prev_hoa = h_offsets.value;
+		horizontal_offsets = [];
+		min_ho = 0;
+		max_ho = 0;
+		let h = height;
+		while(h > 0) {
+			const oh = Math.floor(Math.random() * height / 10);
+			const xo = Math.floor(Math.random() * width * prev_hoa / 100 - width * (prev_hoa / 2) / 100);
+
+				for(let i = 0; i < oh; i++) {
+					horizontal_offsets.push(xo);
+				}
+				max_ho = Math.max(max_ho, Math.abs(xo));
+			
+			h -= oh;
+		}
+		
+	}
+	icon_canvas.width = width + max_ho * 2;
+	icon_canvas.height = height;
+	icon_ctx.clearRect(0, 0, icon_canvas.width, icon_canvas.height);
+	icon_ctx.fillStyle = "transparent"
+	icon_ctx.fillRect(0, 0, icon_canvas.width, icon_canvas.height);
+	icon_ctx.drawImage(hero_icon_img, max_ho, 0, width, height);
+
+	const original_data = icon_ctx.getImageData(0, 0, icon_canvas.width, icon_canvas.height).data;
+
+	const mapped = original_data.map((v, i, a) => {
+		let x = Math.floor(i/4) % icon_canvas.width;
+		let y = Math.floor((Math.floor(i / 4) - x) / icon_canvas.width);
+
+		let oi = i + 4 * horizontal_offsets[y];
+		
+		if(oi < 0 || x + horizontal_offsets[y] > icon_canvas.width) return 0;
+		return a[oi];
+	});
+
+	
+	
+	temp_canvas.width = icon_canvas.width;
+	temp_canvas.height = icon_canvas.height;
+	temp_ctx.fillStyle = "transparent";
+	temp_ctx.clearRect(0, 0, temp_canvas.width, temp_canvas.height);
+
+	temp_ctx.putImageData(new ImageData(mapped, icon_canvas.width, icon_canvas.height), -max_ho/2, 0);
+}
+
+
 let fill = "transparent";
 function generate_glitch(preset) {
-	//if(hero_icon_glitch_img.src != "") hero_icon_img.src = hero_icon_glitch_img.src;
 	const glitch_offset = parseInt(icon_glitch.value);
-	const width = preset.icon.size.width + offsets.width;
-	if (hero_icon_img.width == 0) return;
-	const height = width * hero_icon_img.height / hero_icon_img.width;
+	let width = preset.icon.size.width + offsets.width;
+	let height = width * hero_icon_img.height / hero_icon_img.width;
+	let hicon = hero_icon_img;
+	if(h_offsets.value > 0) {
+		width = temp_canvas.width;
+		height = temp_canvas.height;
+		hicon = temp_canvas;
+	}
+
 	icon_canvas.width = width + glitch_offset * 2;
 	icon_canvas.height = height;
 	icon_ctx.clearRect(0, 0, icon_canvas.width, icon_canvas.height);
 	icon_ctx.fillStyle = "transparent";
 	icon_ctx.fillRect(0, 0, icon_canvas.width, icon_canvas.height);
-	icon_ctx.drawImage(hero_icon_img, 0, 0, width, height);
-	icon_ctx.drawImage(hero_icon_img, glitch_offset, 0, width, height);
-	icon_ctx.drawImage(hero_icon_img, 2 * glitch_offset, 0, width, height);
+	icon_ctx.drawImage(hicon, 0, 0, width, height);
+	icon_ctx.drawImage(hicon, glitch_offset, 0, width, height);
+	icon_ctx.drawImage(hicon, 2 * glitch_offset, 0, width, height);
 
 	icon_ctx.globalCompositeOperation = "source-in";
 	icon_ctx.fillStyle = bg_color.value;
 	icon_ctx.fillRect(0, 0, icon_canvas.width, icon_canvas.height);
 	icon_ctx.globalCompositeOperation = "source-over";
 
-	icon_ctx.drawImage(hero_icon_img, glitch_offset, 0, width, height);
+	icon_ctx.drawImage(hicon, glitch_offset, 0, width, height);
 
 	const original_data = icon_ctx.getImageData(0, 0, icon_canvas.width, icon_canvas.height).data;
 
 	const mapped = original_data.map((v, i, a) => {
-		if (i % 4 == 2) {
+		if(i % 4 == 2) {
 			let oi = i - 4 * glitch_offset;
-
-			if (oi < 0) return 0;
+			
+			if(oi < 0) return 0;
 			return a[oi]
 		}
-		if (i % 4 == 1) {
+		if(i % 4 == 1) {
 			return v;
 		}
-		if (i % 4 == 0) {
-			let x = Math.floor(i / 4) % icon_canvas.width;
+		if(i % 4 == 0) {
+			let x = Math.floor(i/4) % icon_canvas.width;
 			let oi = i + 4 * glitch_offset;
 
-			if (x + glitch_offset > icon_canvas.width) return 0;
+			if(x + glitch_offset > icon_canvas.width) return 0;
 			return a[oi]
 		}
 		return v;
-	});/*.map((v, i, a) => {
-		if(i % 4 == 3) {
-			return a[i - 3] + a[i - 2] + a[i - 1] == 0 ? 0 : 255;
-		}
-		return v;
-	});*/
+	});
+	
+	temp_canvas.width = icon_canvas.width;
+	temp_canvas.height = icon_canvas.height;
+	temp_ctx.fillStyle = "transparent";
+	temp_ctx.clearRect(0, 0, temp_canvas.width, temp_canvas.height);
 
-	icon_ctx.fillStyle = "transparent";
-	icon_ctx.clearRect(0, 0, icon_canvas.width, icon_canvas.height);
 
-	//icon_ctx.drawImage(hero_icon_img, glitch_offset, 0, width, height);
-	icon_ctx.putImageData(new ImageData(mapped, icon_canvas.width, icon_canvas.height), 0, 0);
-
-	hero_icon_glitch_img.src = icon_canvas.toDataURL();
+	temp_ctx.putImageData(new ImageData(mapped, icon_canvas.width, icon_canvas.height), 0, 0);
 }
 
 function draw_icon(preset) {
 	const width = preset.icon.size.width + offsets.width;
 	const height = width * hero_icon_img.height / hero_icon_img.width;
-	if (icon_glitch.value > 0 && hero_icon_glitch_img.complete && hero_icon_glitch_img.naturalHeight != 0) {
-		ctx.drawImage(hero_icon_glitch_img, preset.icon.position.x - offsets.width / 2 + offsets.x + (width - hero_icon_glitch_img.width) / 2, preset.icon.position.y + offsets.y + (preset.icon.size.height - height) / 2, hero_icon_glitch_img.width, hero_icon_glitch_img.height);
+	if((icon_glitch.value > 0 || h_offsets.value > 0)/* && hero_icon_glitch_img.complete && hero_icon_glitch_img.naturalHeight != 0*/) {	
+		ctx.drawImage(temp_canvas, preset.icon.position.x - offsets.width / 2 + offsets.x + (width - temp_canvas.width)/2, preset.icon.position.y + offsets.y + (preset.icon.size.height - height) / 2, temp_canvas.width, temp_canvas.height);
 		//hero_icon_img.src = hero_icon;
 	} else {
 		ctx.drawImage(hero_icon_img, preset.icon.position.x - offsets.width / 2 + offsets.x, preset.icon.position.y + offsets.y + (preset.icon.size.height - height) / 2, width, height);
@@ -328,6 +396,16 @@ document.getElementById("icon_file").onchange = function () {
 	if (hero_icon != "") try { URL.revokeObjectURL(hero_icon); } catch (e) { }
 	hero_icon = URL.createObjectURL(this.files[0]);
 	hero_icon_img.src = hero_icon;
+
+	h_offsets.value = 0;
+	icon_glitch.value = 0;
+
+	for (const key in offsets) {
+		if (offsets.hasOwnProperty(key)) {
+			offsets[key] = 0;
+			document.getElementById(`offset_${key}`).value = 0;
+		}
+	}
 }
 
 for (const key in offsets) {
