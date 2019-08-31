@@ -248,10 +248,44 @@ function generate() {
 	ctx.fillStyle = "white";
 
 	text.value.split("\n").forEach((line, i, lines) => {
-		ctx.fillText(line,
-			preset.text.position.x + preset.text.size.width / 2,
-			preset.text.position.y + (i + 1) * preset.text.size.height / (lines.length + 1)
-		);
+		const lx = preset.text.position.x + preset.text.size.width / 2;
+		const ly = preset.text.position.y + (i + 1) * preset.text.size.height / (lines.length + 1);
+
+
+		const matches = [...line.matchAll(/{{(.+?)}}/g)];
+		if(!matches.length) {
+			ctx.textAlign = "center";
+			return ctx.fillText(line, lx, ly);
+		}
+
+		let segments = matches.map(m => {
+			let text = m[1].split(":");
+			let color = text.shift();
+			return { text, color };
+		});
+
+		let normal_line = line;
+		matches.forEach((m, i) => {
+			normal_line = normal_line.replace(m[0], segments[i].text);
+		});
+
+		const line_width = ctx.measureText(normal_line).width;
+		let segment_x = lx - line_width / 2;
+
+		ctx.textAlign = "left";
+
+		matches.forEach((m, i) => {
+			line = line.replace(m[0], "\u0000\u0000");
+		});
+		let segs = [...segments];
+		const all_segments = line.split("\u0000").map(v => v ? { color: "white", text: v } : segs.shift());
+		//console.log(line, line.split("\u0000"), all_segments);
+		all_segments.filter(s => s).forEach(s => {
+			ctx.fillStyle = s.color;
+			const sl = ctx.measureText(s.text).width;
+			ctx.fillText(s.text, segment_x, ly);
+			segment_x += sl;
+		});
 	});
 
 	render.src = canvas.toDataURL();
