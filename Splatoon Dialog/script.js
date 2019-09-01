@@ -211,7 +211,7 @@ function generate() {
 		if(icon_glitch.value > 0) generate_glitch(preset);
 
 		hero_icon_glitch_img.src = temp_canvas.toDataURL();
-	}	
+	}
 
 	if (icon_priority.value == 0) {
 		try {
@@ -259,9 +259,8 @@ function generate() {
 		}
 
 		let segments = matches.map(m => {
-			let text = m[1].split(":");
-			let color = text.shift();
-			return { text, color };
+			let [color, text] = m[1].split(":");
+			return { color,  text };
 		});
 
 		let normal_line = line;
@@ -275,12 +274,19 @@ function generate() {
 		ctx.textAlign = "left";
 
 		matches.forEach((m, i) => {
-			line = line.replace(m[0], "\u0000\u0000");
+			line = line.replace(m[0], "\u0000");
 		});
-		let segs = [...segments];
-		const all_segments = line.split("\u0000").map(v => v ? { color: "white", text: v } : segs.shift());
-		//console.log(line, line.split("\u0000"), all_segments);
-		all_segments.filter(s => s).forEach(s => {
+
+		const line_segments = line.split("\u0000");
+
+		let all_segments = [];
+		for(let i = 0; i < line_segments.length - 1; i++) {
+			all_segments.push(line_segments[i], segments[i]);
+		}
+		if(!all_segments.includes(line_segments[line_segments.length - 1])) all_segments.push(line_segments[line_segments.length - 1]);
+		all_segments = all_segments.filter(s => s).map(v => v.text ? v : { color: "white", text: v });
+		
+		all_segments.forEach(s => {
 			ctx.fillStyle = s.color;
 			const sl = ctx.measureText(s.text).width;
 			ctx.fillText(s.text, segment_x, ly);
