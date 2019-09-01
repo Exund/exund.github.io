@@ -254,6 +254,7 @@ function generate() {
 
 		const matches = [...line.matchAll(/{{(.+?)}}/g)];
 		if(!matches.length) {
+			ctx.fillStyle = "white";
 			ctx.textAlign = "center";
 			return ctx.fillText(line, lx, ly);
 		}
