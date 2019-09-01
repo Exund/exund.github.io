@@ -4,6 +4,8 @@ let audioContext;
 let analyser;
 /** @type {MediaElementAudioSourceNode} */
 let track;
+/** @type {BiquadFilterNode} */
+let biquad_filter;
 let bufferLength;
 let frequencyByteDataArray = new Uint8Array(0);
 let timeDomainByteDataArray = new Uint8Array(0);
@@ -33,16 +35,22 @@ function LoadSound() {
     audio.src = URL.createObjectURL(file_input.files[0]);
     audio.load();
     track = audioContext.createMediaElementSource(audio);
-    analyser = audioContext.createAnalyser();
-    track.connect(analyser);
+	analyser = audioContext.createAnalyser();
+	track.connect(analyser);
+	/*biquad_filter = audioContext.createBiquadFilter();
+	track.connect(biquad_filter);
+	biquad_filter.connect(analyser);*/
     analyser.connect(audioContext.destination);
-    analyser.fftSize = 512;
+	analyser.fftSize = 512;
+	
+	/*biquad_filter.type = "allpass";
+	biquad_filter.frequency.setValueAtTime(0, 0);
+	biquad_filter.detune.value = 0;
+	biquad_filter.Q.value = 0;*/
 
     /*frequencyByteDataArray = new Uint8Array(analyser.frequencyBinCount);
     timeDomainByteDataArray = new Uint8Array(analyser.frequencyBinCount);*/
 }
-let prev_time = [];
-
 let min_height = 30;
 
 let round_wave = true;
@@ -90,7 +98,20 @@ let coloring = [
     },
     (size, index, array_length) => {
         return "#"+("0"+size.toString(16)).substr(-2).repeat(3);
-    },
+	},
+	(size, index, array_length) => {
+		let angle = Math.PI * 2 * (index + audio.currentTime / audio.duration * array_length) / array_length;
+		return `hsl(${angle}rad, ${Math.min(((size / 255) * 100 + 50), 100)}%, 50%)`;
+	},
+	(size, index, array_length) => {
+		return `hsl(${size / 255 * Math.PI * 2}rad, 100%, 50%)`;
+	},
+	(size, index, array_length) => {
+		return `hsl(${(255 - size / 255) * Math.PI * 2}rad, 100%, 50%)`;
+	},
+	(size, index, array_length) => {
+		return `hsl(${((audio.currentTime / audio.duration * 255 + size) % 256) / 255 * Math.PI * 2}rad, 100%, 50%)`;
+	}
     //() => "#"+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)
 ];
 
@@ -102,10 +123,7 @@ function Start() {
 		frequencyByteDataArray = new Uint8Array(analyser.frequencyBinCount);
     	timeDomainByteDataArray = new Uint8Array(analyser.frequencyBinCount)
         analyser.getByteFrequencyData(frequencyByteDataArray);
-        analyser.getByteTimeDomainData(timeDomainByteDataArray);
-
-        prev_time.push([...timeDomainByteDataArray]);
-        if(prev_time.length > 10) prev_time.pop();
+		analyser.getByteTimeDomainData(timeDomainByteDataArray);
 
         ctx.fillStyle = background_color;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
