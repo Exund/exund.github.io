@@ -5,8 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Music</title>
+    <style>
+    ::-webkit-scrollbar {
+        width: 0px;
+        height: 0;
+        background: transparent;
+    }
+    </style>
 </head>
-<body style="margin:0;padding:0;width:100vw;height:100vh;">
+<body style="margin:0;padding:0;width:100vw;height:100vh;overflow:scroll;">
     <canvas id="canvas"></canvas>
     <audio controls id="audio" style="height:35px;"></audio><br />
     <label>Mirror</label><input type="checkbox" onchange="mirror = this.checked"/>
