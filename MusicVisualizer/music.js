@@ -13,7 +13,7 @@ let timeDomainByteDataArray = new Uint8Array(0);
 /** @type {HTMLCanvasElement} */
 const canvas = document.getElementById("canvas");
 canvas.width = window.innerWidth;
-canvas.height = window.innerHeight*0.75;
+canvas.height = window.innerHeight;
 
 window.onresize = function() {
 	canvas.width = window.innerWidth;
