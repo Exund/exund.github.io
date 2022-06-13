@@ -1,66 +1,286 @@
-/** @type {AudioContext} */
-let audioContext;
-/** @type {AnalyserNode} */
-let analyser;
-/** @type {MediaElementAudioSourceNode} */
-let track;
-/** @type {BiquadFilterNode} */
-let biquad_filter;
-let bufferLength;
-let frequencyByteDataArray = new Uint8Array(0);
-let timeDomainByteDataArray = new Uint8Array(0);
+Math.TAU = Math.PI * 2;
+
+function createEventProxy(obj) {
+    const et = new EventTarget();
+    et.addEventListener = et.addEventListener.bind(et);
+    et.removeEventListener = et.removeEventListener.bind(et);
+    et.dispatchEvent = et.dispatchEvent.bind(et);
+
+    return new Proxy(Object.assign(et, obj), {
+        set: function (target, key, value) {
+            if (typeof target[key] !== "function" && target[key] !== value) {
+                target[key] = value;
+                target.dispatchEvent(new CustomEvent(key, { detail: value }));
+            }
+
+            return true;
+        }
+    });
+}
+
+const settings_target = {
+    min_height: 30,
+    waveform: true,
+    round_wave: true,
+    bars: false,
+    repeat: 1,
+    mirror: false,
+    fill: false,
+    bounce: false,
+    invert: false,
+    start_angle: 0,
+    coloring_type: 0,
+    frequency: 9,
+    freq_percentage: 2 / 3,
+}
+
+/**
+ * @type {typeof settings_target & EventTarget}
+ */
+const settings = createEventProxy(settings_target);
+
+settings.addEventListener("coloring_type", e => {
+    draw_data.color_function = coloring[Math.max(0, Math.min(coloring.length - 1, e.detail))];
+});
+
+settings.addEventListener("frequency", e => {
+    if (audio_data.analyser) {
+        audio_data.analyser.fftSize = 2 ** e.detail;
+        audio_data.frequencies = new Uint8Array(audio_data.analyser.frequencyBinCount);
+        audio_data.waveform = new Uint8Array(audio_data.analyser.frequencyBinCount);
+    }
+});
+
+settings.addEventListener("mirror", recalculate_draw_data);
+settings.addEventListener("repeat", recalculate_draw_data);
+settings.addEventListener("freq_percentage", recalculate_draw_data);
+settings.addEventListener("start_angle", () => {
+    draw_data.initial_angle = Math.PI + (settings.mirror ? draw_data.incr / 2 : 0) + settings.start_angle;
+});
+
+
+const audio_data_target = {
+    /** @type {AnalyserNode} */
+    analyser: null,
+
+    frequencies: new Uint8Array(0),
+    waveform: new Uint8Array(0),
+};
+
+/**
+ * @type {typeof audio_data_target & EventTarget}
+ */
+const audio_data = createEventProxy(audio_data_target);
+
+audio_data.addEventListener("frequencies", recalculate_draw_data);
+
+const canvas_data = {
+    mx: 0,
+    my: 0,
+
+    min_dim: 0,
+    half_min_dim: 0,
+};
+
+function hexcolor(rgb) {
+    return "#" + rgb.map(c => c.toString(16).padStart(2, "0")).join("");
+}
+
+function rgbcolor(rgb) {
+    return "rgb(" + rgb.map(c => Math.round(c)).join(",") + ")";
+}
+
+const coloring = /*[
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return "#" + ("0" + size.toString(16)).substr(-2) + ("0" + (255 - size).toString(16)).substr(-2) + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2);
+    },
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return "#" + ("0" + (255 - size).toString(16)).substr(-2) + ("0" + size.toString(16)).substr(-2) + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2);
+    },
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return "#" + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2) + ("0" + (255 - size).toString(16)).substr(-2) + ("0" + size.toString(16)).substr(-2);
+    },
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return "#" + ("0" + size.toString(16)).substr(-2) + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2) + ("0" + (255 - size).toString(16)).substr(-2);
+    },
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return "#" + ("0" + (255 - size).toString(16)).substr(-2) + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2) + ("0" + size.toString(16)).substr(-2);
+    },
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return "#" + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2) + ("0" + size.toString(16)).substr(-2) + ("0" + (255 - size).toString(16)).substr(-2);
+    },
+    (size, index, array_length) => {
+        return "#" + ("0" + size.toString(16)).substr(-2).repeat(3);
+    },
+    (size, index, array_length) => {
+        let angle = Math.TAU * (index + audio.currentTime / audio.duration * array_length) / array_length;
+        return `hsl(${angle}rad, ${Math.min(((size / 255) * 100 + 50), 100)}%, 50%)`;
+    },
+    (size, index, array_length) => {
+        return `hsl(${size / 255 * Math.TAU}rad, 100%, 50%)`;
+    },
+    (size, index, array_length) => {
+        return `hsl(${(255 - size / 255) * Math.TAU}rad, 100%, 50%)`;
+    },
+    (size, index, array_length) => {
+        return `hsl(${((audio.currentTime / audio.duration * 255 + size) % 256) / 255 * Math.TAU}rad, 100%, 50%)`;
+    }
+    //() => "#"+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)
+];*/
+    [
+        (size, index, array_length) => {
+            size = Math.max(size, 1);
+            return hexcolor([size, 255 - size, Math.round((index % array_length) / array_length * 255)]);
+        },
+        (size, index, array_length) => {
+            size = Math.max(size, 1);
+            return hexcolor([255 - size, size, Math.round((index % array_length) / array_length * 255)]);
+        },
+        (size, index, array_length) => {
+            size = Math.max(size, 1);
+            return hexcolor([Math.round((index % array_length) / array_length * 255), 255 - size, size]);
+        },
+        (size, index, array_length) => {
+            size = Math.max(size, 1);
+            return hexcolor([size, Math.round((index % array_length) / array_length * 255), 255 - size]);
+        },
+        (size, index, array_length) => {
+            size = Math.max(size, 1);
+            return hexcolor([255 - size, Math.round((index % array_length) / array_length * 255), size]);
+        },
+        (size, index, array_length) => {
+            size = Math.max(size, 1);
+            return hexcolor([Math.round((index % array_length) / array_length * 255), size, 255 - size]);
+        },
+        (size, index, array_length) => {
+            return "#" + ("0" + size.toString(16)).substr(-2).repeat(3);
+        },
+        (size, index, array_length) => {
+            let angle = Math.TAU * (index + audio.currentTime / audio.duration * array_length) / array_length;
+            return `hsl(${angle}rad, ${Math.min(((size / 255) * 100 + 50), 100)}%, 50%)`;
+        },
+        (size, index, array_length) => {
+            return `hsl(${size / 255 * Math.TAU}rad, 100%, 50%)`;
+        },
+        (size, index, array_length) => {
+            return `hsl(${(255 - size / 255) * Math.TAU}rad, 100%, 50%)`;
+        },
+        (size, index, array_length) => {
+            return `hsl(${((audio.currentTime / audio.duration * 255 + size) % 256) / 255 * Math.TAU}rad, 100%, 50%)`;
+        }
+    ];
+
+const draw_data = {
+    repeat_freq_length: 0,
+    barWidth: 0,
+    incr: 0,
+    initial_angle: 0,
+    sliceWidth: 0,
+
+    /**
+     * @type {(size: number, index: number, array_length: number) => string}
+     */
+    color_function: coloring[0],
+}
+
+function recalculate_draw_data() {
+    const repeat_freq_length = Math.floor(audio_data.frequencies.length * settings.repeat * settings.freq_percentage);
+    const incr = Math.TAU / repeat_freq_length;
+
+    Object.assign(draw_data, {
+        repeat_freq_length,
+        barWidth: canvas.width / repeat_freq_length,
+        incr,
+        initial_angle: Math.PI + (settings.mirror ? incr / 2 : 0) + settings.start_angle,
+        sliceWidth: canvas.width / audio_data.waveform.length,
+    });
+}
+
+document.querySelectorAll("input[type=checkbox]").forEach(/** @param {HTMLInputElement} c */ c => {
+    const id = c.id;
+    if (settings.hasOwnProperty(id)) {
+        c.addEventListener("change", e => {
+            settings[id] = e.target.checked;
+        });
+    }
+});
+
+document.querySelectorAll("input[type=number]").forEach(n => {
+    const id = n.id;
+    if (settings.hasOwnProperty(id)) {
+        n.addEventListener("input", e => {
+            settings[id] = parseFloat(e.target.value);
+        });
+    }
+});
 
 /** @type {HTMLCanvasElement} */
 const canvas = document.getElementById("canvas");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+const ctx = canvas.getContext("2d");
 
-window.onresize = function() {
-	canvas.width = window.innerWidth;
-	canvas.height = window.innerHeight;
+window.addEventListener("resize", () => {
+    recalculate_canvas_data();
+    recalculate_draw_data();
+});
+
+function recalculate_canvas_data() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    canvas_data.half_min_dim = (canvas_data.min_dim = Math.min(canvas.width, canvas.height)) / 2;
+    canvas_data.mx = canvas.width / 2;
+    canvas_data.my = canvas.height / 2;
 }
 
-const ctx = canvas.getContext("2d");
+recalculate_canvas_data();
+
+
 /** @type {HTMLAudioElement} */
 const audio = document.getElementById("audio");
+
 /** @type {HTMLInputElement} */
 const file_input = document.getElementById("file");
-file_input.addEventListener("change",LoadSound)
-const load_button = document.getElementById("load");
-load_button.addEventListener("click",Start);
-
-
-function LoadSound() {
-    audioContext = new AudioContext();
+file_input.addEventListener("change", () => {
     audio.src = URL.createObjectURL(file_input.files[0]);
     audio.load();
-    track = audioContext.createMediaElementSource(audio);
-	analyser = audioContext.createAnalyser();
-	track.connect(analyser);
-	/*biquad_filter = audioContext.createBiquadFilter();
-	track.connect(biquad_filter);
-	biquad_filter.connect(analyser);*/
-    analyser.connect(audioContext.destination);
-	analyser.fftSize = 512;
-	
-	/*biquad_filter.type = "allpass";
-	biquad_filter.frequency.setValueAtTime(0, 0);
-	biquad_filter.detune.value = 0;
-	biquad_filter.Q.value = 0;*/
 
-    /*frequencyByteDataArray = new Uint8Array(analyser.frequencyBinCount);
-    timeDomainByteDataArray = new Uint8Array(analyser.frequencyBinCount);*/
-}
-let min_height = 30;
+    if(!audio_data.analyser) {
+        const audioContext = new AudioContext();
+        const track = audioContext.createMediaElementSource(audio);
+        const analyser = audioContext.createAnalyser();
+        track.connect(analyser);
+        analyser.connect(audioContext.destination);
+        analyser.fftSize = 2 ** settings.frequency;
+        audio_data.analyser = analyser;
+    }
 
-let round_wave = true;
-let bar_freq = false;
-let repeat = 1;
-let mirror = false;
-let fill = false;
-let bounce = false;
-let invert = false;
-let start_angle = 0;
+    audio_data.waveform = new Uint8Array(audio_data.analyser.frequencyBinCount);
+    audio_data.frequencies = new Uint8Array(audio_data.analyser.frequencyBinCount);
+
+    Start();
+});
+
+window.addEventListener("drop", e => {
+    file_input.files = e.dataTransfer.files || [e.dataTransfer.items[0].getAsFile()];
+    e.preventDefault();
+
+    file_input.dispatchEvent(new Event("change"));
+});
+
+window.ondragend = window.ondragover = e => {
+    e.preventDefault();
+};
+
+
+const load_button = document.getElementById("load");
+load_button.addEventListener("click", Start);
+
 
 let prev_mean = 0;
 
@@ -68,225 +288,192 @@ let timer;
 let background_color = "#000";
 let strokeStyle = "#fff";
 
-let coloring_type = 0;
-
-let coloring = [
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#"+("0"+size.toString(16)).substr(-2)+("0"+(255-size).toString(16)).substr(-2)+("0"+Math.round((index%array_length)/array_length*255).toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#"+("0"+(255-size).toString(16)).substr(-2)+("0"+size.toString(16)).substr(-2)+("0"+Math.round((index%array_length)/array_length*255).toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#"+("0"+Math.round((index%array_length)/array_length*255).toString(16)).substr(-2)+("0"+(255-size).toString(16)).substr(-2)+("0"+size.toString(16)).substr(-2);
-	},
-
-	(size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#"+("0"+size.toString(16)).substr(-2)+("0"+Math.round((index%array_length)/array_length*255).toString(16)).substr(-2)+("0"+(255-size).toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#"+("0"+(255-size).toString(16)).substr(-2)+("0"+Math.round((index%array_length)/array_length*255).toString(16)).substr(-2)+("0"+size.toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#"+("0"+Math.round((index%array_length)/array_length*255).toString(16)).substr(-2)+("0"+size.toString(16)).substr(-2)+("0"+(255-size).toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        return "#"+("0"+size.toString(16)).substr(-2).repeat(3);
-	},
-	(size, index, array_length) => {
-		let angle = Math.PI * 2 * (index + audio.currentTime / audio.duration * array_length) / array_length;
-		return `hsl(${angle}rad, ${Math.min(((size / 255) * 100 + 50), 100)}%, 50%)`;
-	},
-	(size, index, array_length) => {
-		return `hsl(${size / 255 * Math.PI * 2}rad, 100%, 50%)`;
-	},
-	(size, index, array_length) => {
-		return `hsl(${(255 - size / 255) * Math.PI * 2}rad, 100%, 50%)`;
-	},
-	(size, index, array_length) => {
-		return `hsl(${((audio.currentTime / audio.duration * 255 + size) % 256) / 255 * Math.PI * 2}rad, 100%, 50%)`;
-	}
-    //() => "#"+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)
-];
-
 ctx.lineJoin = 'round';
 function Start() {
-    clearInterval(timer);
+    cancelAnimationFrame(timer);
     audio.play();
-    timer = setInterval(() => {
-		frequencyByteDataArray = new Uint8Array(analyser.frequencyBinCount);
-    	timeDomainByteDataArray = new Uint8Array(analyser.frequencyBinCount)
-        analyser.getByteFrequencyData(frequencyByteDataArray);
-		analyser.getByteTimeDomainData(timeDomainByteDataArray);
 
-        ctx.fillStyle = background_color;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        //frequencyByteDataArray = frequencyByteDataArray.filter(v => v >= min_freq);
+    /*function update() {
+        draw();
+        timer = requestAnimationFrame(update);
+    }
 
-        let barWidth = (canvas.width / (frequencyByteDataArray.length * repeat));
-        let barHeight;
-        let incr = Math.PI * 2 / (frequencyByteDataArray.length * repeat);
-        let angle = Math.PI + (mirror ? incr/2 : 0) + start_angle;
-		let x0, y0;
-		let px, py;
-        let bx = 0;      
-        let mean = 0;
-
-        for(var i = 0; i < frequencyByteDataArray.length * repeat; i++) {
-			
-          	barHeight = mirror && i >= frequencyByteDataArray.length*repeat/2 ? frequencyByteDataArray[frequencyByteDataArray.length-(i%frequencyByteDataArray.length + 1)] : frequencyByteDataArray[i%frequencyByteDataArray.length];
-			
-			if(bar_freq) {
-				ctx.fillStyle = coloring[coloring_type](barHeight, i, frequencyByteDataArray.length);//"#"+("0"+Math.round((i%frequencyByteDataArray.length)/frequencyByteDataArray.length*255).toString(16)).substr(-2)+("0"+(255-barHeight).toString(16)).substr(-2)+("0"+barHeight.toString(16)).substr(-2);
-				ctx.fillRect(bx,canvas.height-barHeight,barWidth,barHeight);
-				bx+=barWidth;
-			}
-            
-            ctx.fillStyle = ctx.strokeStyle = coloring[coloring_type](barHeight, i, frequencyByteDataArray.length);
-
-			barHeight += bounce ? prev_mean : 0;
-			barHeight = Math.max(min_height, barHeight);
-
-			if(invert) barHeight = 255 - barHeight;
-			ctx.beginPath();
-			let x = canvas.width/2 + Math.sin(angle) * (barHeight / (255 + (bounce ? prev_mean : 0))) * Math.min(canvas.height,canvas.width)/2;
-			let y = canvas.height/2 + Math.cos(angle) * (barHeight / (255 + (bounce ? prev_mean : 0))) * Math.min(canvas.height,canvas.width)/2;
-
-			if (i == 0) {
-				[x0, y0] = [x, y];
-            } else {
-				ctx.moveTo(px, py);
-                ctx.lineTo(x, y);
-                if(fill) {
-                    ctx.lineTo(canvas.width/2, canvas.height/2);
-                    ctx.fill();
-                    ctx.lineWidth = 1;
-                }
-                ctx.stroke();        
-			}
-			[px, py] = [x, y];
-            angle += incr;
-            if(i < frequencyByteDataArray.length) mean+=frequencyByteDataArray[i];
-        }
-		mean = mean/frequencyByteDataArray.length;
-		prev_mean = mean;
-		ctx.beginPath();
-		ctx.moveTo(px, py);
-        ctx.lineTo(x0, y0);
-        if(fill) {
-            ctx.lineTo(canvas.width/2, canvas.height/2);
-            ctx.fill();
-        }
-        ctx.stroke();
-
-        ctx.strokeStyle = "#eee";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(canvas.width/2, canvas.height/2, (mean / 255) * Math.min(canvas.height,canvas.width)/2, 0, 2 * Math.PI);
-        ctx.stroke();
-
-		
-
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = strokeStyle;
-        ctx.beginPath();
-
-		let sliceWidth = canvas.width / timeDomainByteDataArray.length;
-
-		angle = 0;
-        incr = Math.PI * 2 / timeDomainByteDataArray.length;
-        let x = 0;
-        for (let i = 0; i < timeDomainByteDataArray.length; i++) {
-
-            let v = timeDomainByteDataArray[i];
-            //let y = v * canvas.height / 2;
-			x = round_wave ? canvas.width/2 + Math.sin(angle) * v/2 : x;
-			let y = round_wave ? canvas.height/2 + Math.cos(angle) * v/2 : v/128 * canvas.height / 2;
-
-            if (i === 0) {
-				ctx.moveTo(x, y);
-				[x0, y0] = [x, y];
-            } else {
-                ctx.lineTo(x, y);
-			}
-			
-			if(!round_wave) x += sliceWidth;
-			angle += incr;
-        }
-		//ctx.lineTo(canvas.width, canvas.height / 2);
-		if(round_wave) ctx.lineTo(x0, y0);
-        ctx.stroke();
-    },1000/240);
+    timer = requestAnimationFrame(update);*/
+    timer = setInterval(draw, 1000 / 60);
 }
 
-/*window.onload = function		timeDomainByteDataArray.() {
-  
-    var file = document.getElementById("thefile");
-    var 
-    
 
-      var files = this.files;
-      audio.src = URL.createObjectURL(files[0]);
-      audio.load();
-      audio.play();
-      var context = new AudioContext();
-      var src = context.createMediaElementSource(audio);
-      var analyser = context.createAnalyser();
-  
-      var canvas = document.getElementById("canvas");
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      var ctx = canvas.getContext("2d");
-  
-      src.connect(analyser);
-      analyser.connect(context.destination);
-  
-      analyser.fftSize = 256;
-  
-      var bufferLength = analyser.frequencyBinCount;
-      console.log(bufferLength);
-  
-      var dataArray = new Uint8Array(bufferLength);
-  
-      var WIDTH = canvas.width;
-      var HEIGHT = canvas.height;
-  
-      var barWidth = (WIDTH / bufferLength) * 2.5;
-      var barHeight;
-      var x = 0;
-  
-      function renderFrame() {
-        requestAnimationFrame(renderFrame);
-  
-        x = 0;
-  
-        analyser.getByteFrequencyData(dataArray);
-  
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  
-        for (var i = 0; i < bufferLength; i++) {
-          barHeight = dataArray[i];
-          
-          var r = barHeight + (25 * (i/bufferLength));
-          var g = 250 * (i/bufferLength);
-          var b = 50;
-  
-          ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
-          ctx.fillRect(x, HEIGHT - barHeight, barWidth, barHeight);
-  
-          x += barWidth + 1;
+function draw() {
+    const {
+        min_height,
+        bars,
+        mirror,
+        fill,
+        bounce,
+        invert,
+    } = settings;
+
+    const { frequencies, waveform, analyser } = audio_data;
+
+    ctx.lineWidth = 1;
+    ctx.fillStyle = background_color;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    analyser.getByteFrequencyData(frequencies);
+    analyser.getByteTimeDomainData(waveform);
+
+    const freq_length = Math.floor(frequencies.length * settings.freq_percentage);
+
+    const { barWidth, color_function, incr, initial_angle, repeat_freq_length } = draw_data;
+
+    let angle = initial_angle;
+    let x0, y0;
+    let px, py;
+    let mean = 0;
+
+    const { mx, my, half_min_dim } = canvas_data;
+
+    const bars_data = [];
+
+    ctx.save();
+    ctx.translate(mx, my);
+    //ctx.rotate(initial_angle);
+    for (var i = 0; i < repeat_freq_length; i++) {
+        let barHeight;
+
+        if (mirror && i >= repeat_freq_length / 2) {
+            barHeight = frequencies[freq_length - (i % freq_length + 1)];
+        } else {
+            barHeight = frequencies[i % freq_length];
         }
-      }
-  
-      audio.play();
-      renderFrame();
-    };
-  };*/
+
+        ctx.fillStyle = ctx.strokeStyle = color_function(barHeight, i, freq_length);
+
+        if (bars) {
+            bars_data.push([barHeight, ctx.fillStyle]);
+            //ctx.fillRect(bx - mx, canvas.height - barHeight - my, barWidth, barHeight);
+            //bx += barWidth;
+        }
+
+        if (bounce) {
+            barHeight += prev_mean;
+        }
+
+        barHeight = Math.max(min_height, barHeight);
+
+        if (invert) {
+            barHeight = 255 - barHeight;
+        }
+
+        ctx.beginPath();
+
+        const mult = (barHeight / (255 + (bounce ? prev_mean : 0))) * half_min_dim
+        let x = Math.sin(angle) * mult;
+        let y = Math.cos(angle) * mult;
+
+        if (i == 0) {
+            [x0, y0] = [x, y];
+        } else {
+            ctx.moveTo(px, py);
+            ctx.lineTo(x, y);
+            if (fill) {
+                ctx.lineTo(0, 0);
+                ctx.fill();
+                ctx.stroke();
+            }
+            ctx.stroke();
+        }
+
+        [px, py] = [x, y];
+        angle += incr;
+
+        if (i < freq_length) {
+            mean += frequencies[i];
+        }
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(x0, y0);
+    if (fill) {
+        ctx.lineTo(0, 0);
+        ctx.fill();
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    mean /= freq_length;
+    prev_mean = mean;
+
+    let bx = 0;
+    for (const bar of bars_data) {
+        const h = bar[0];
+        ctx.fillStyle = bar[1];
+        ctx.fillRect(bx - 0.5, canvas.height - h, barWidth + 0.5, h);
+        bx += barWidth;
+    }
+
+
+    ctx.strokeStyle = "#eee";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(mx, my, mean / 255 * half_min_dim, 0, 2 * Math.PI);
+    ctx.stroke();
+
+    if (settings.waveform) {
+        draw_wave();
+    }
+}
+
+
+function draw_wave() {
+    const { waveform } = audio_data;
+    const { mx, my } = canvas_data;
+
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = strokeStyle;
+
+
+    let angle = 0;
+    let incr = Math.TAU / waveform.length;
+
+
+    if (settings.round_wave) {
+        ctx.translate(mx, my);
+        ctx.beginPath();
+
+        for (let i = 0; i < waveform.length; i++) {
+            let v = waveform[i] / 2;
+
+            let x = Math.sin(angle) * v;
+            let y = Math.cos(angle) * v;
+
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+
+            angle += incr;
+        }
+
+        ctx.closePath();
+    } else {
+        let x = 0;
+        for (let i = 0; i < waveform.length; i++) {
+            let y = waveform[i] / 128 * my;
+
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+            x += draw_data.sliceWidth;
+            angle += incr;
+        }
+    }
+
+    ctx.stroke();
+    ctx.restore();
+}

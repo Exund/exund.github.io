@@ -1,35 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Music</title>
     <style>
-    html {
-        color: white;
-        background-color: black;
-	}
-    ::-webkit-scrollbar {
-        width: 0px;
-        height: 0;
-        background: transparent;
-    }
+        html {
+            color: white;
+            background-color: black;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: scroll;
+        }
+
+        #canvas {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #audio {
+            height: 35px;
+            width: 100%;
+        }
+
+        #audio::-webkit-media-controls-enclosure {
+            background-color:  rgba(59, 59, 59, 0.9);
+            color: white;
+        }
+
+        ::-webkit-scrollbar {
+            width: 0px;
+            height: 0;
+            background: transparent;
+        }
     </style>
 </head>
-<body style="margin:0;padding:0;width:100vw;height:100vh;overflow:scroll;">
-    <canvas id="canvas" style="width:100vw;height:100vh;"></canvas>
+
+<body>
+    <canvas id="canvas"></canvas>
     <audio controls id="audio" style="height:35px;"></audio><br />
-    <label>Mirror</label><input type="checkbox" onchange="mirror = this.checked"/>
-    <label>Fill</label><input type="checkbox" onchange="fill = this.checked"/>
-	<label>Bars</label><input type="checkbox" onchange="bar_freq = this.checked"/>
-	<label>Bounce</label><input type="checkbox" onchange="bounce = this.checked"/>
-	<label>Invert</label><input type="checkbox" onchange="invert = this.checked"/><br />
-    <label>Coloring type</label><input type="number" min="0" value="0" onchange="coloring_type = Math.max(0, Math.min(coloring.length-1, this.value))" /><br />
-    <label>Min height</label><input type="number" value="30" onchange="min_height = this.value" />
-    <label>Repeat</label><input type="number" min="1" value="1" onchange="repeat = this.value" /><br />
-    <label>Frequency rate</label><input type="number" step="1" min="5" max="15" value="9" onchange="analyser.fftSize = 2**this.value" /><br />
-    <input type="file" id="file"><button id="load">Load</button>
+    <label for="mirror">Mirror</label><input id="mirror" type="checkbox" />
+    <label for="fill">Fill</label><input id="fill" type="checkbox" />
+    <label for="bars">Bars</label><input id="bars" type="checkbox" />
+    <label for="bounce">Bounce</label><input id="bounce" type="checkbox" />
+    <label for="invert">Invert</label><input id="invert" type="checkbox" />
+    <label for="waveform">Waveform</label><input id="waveform" type="checkbox" checked/>
+    <label for="round_wave">Round waveform</label><input id="round_wave" type="checkbox" checked/><br />
+    <label for="coloring_type">Coloring type</label><input id="coloring_type" type="number" min="0" value="0" />
+    <label for="frequency">Frequency rate</label><input id="frequency" type="number" step="1" min="5" max="15" value="9" /><br />
+    <label for="min_height">Min height</label><input id="min_height" type="number" value="30" />
+    <label for="repeat">Repeat</label><input id="repeat" type="number" min="1" value="1" />
+    <label for="freq_percentage">Frequency %</label><input id="freq_percentage" type="number" min="0" max="1" value="0.666" /><br />
+    <input id="file" type="file" accept="audio/*"><button id="load">Load</button>
     <script src="music.js"></script>
 </body>
+
 </html>
