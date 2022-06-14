@@ -1,5 +1,10 @@
 Math.TAU = Math.PI * 2;
 
+/**
+ * @template T
+ * @param {T} obj
+ * @returns {T & EventTarget}
+ */
 function createEventProxy(obj) {
     const et = new EventTarget();
     et.addEventListener = et.addEventListener.bind(et);
@@ -34,9 +39,6 @@ const settings_target = {
     freq_percentage: 2 / 3,
 }
 
-/**
- * @type {typeof settings_target & EventTarget}
- */
 const settings = createEventProxy(settings_target);
 
 settings.addEventListener("coloring_type", e => {
@@ -67,9 +69,6 @@ const audio_data_target = {
     waveform: new Uint8Array(0),
 };
 
-/**
- * @type {typeof audio_data_target & EventTarget}
- */
 const audio_data = createEventProxy(audio_data_target);
 
 audio_data.addEventListener("frequencies", recalculate_draw_data);
@@ -288,20 +287,13 @@ let timer;
 let background_color = "#000";
 let strokeStyle = "#fff";
 
-ctx.lineJoin = 'round';
+ctx.lineJoin = "round";
+
 function Start() {
-    cancelAnimationFrame(timer);
+    clearInterval(timer);
     audio.play();
-
-    /*function update() {
-        draw();
-        timer = requestAnimationFrame(update);
-    }
-
-    timer = requestAnimationFrame(update);*/
     timer = setInterval(draw, 1000 / 60);
 }
-
 
 function draw() {
     const {
@@ -316,8 +308,7 @@ function draw() {
     const { frequencies, waveform, analyser } = audio_data;
 
     ctx.lineWidth = 1;
-    ctx.fillStyle = background_color;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     analyser.getByteFrequencyData(frequencies);
     analyser.getByteTimeDomainData(waveform);
@@ -330,14 +321,13 @@ function draw() {
     let x0, y0;
     let px, py;
     let mean = 0;
+    let bx = 0;
 
     const { mx, my, half_min_dim } = canvas_data;
 
-    const bars_data = [];
-
     ctx.save();
     ctx.translate(mx, my);
-    //ctx.rotate(initial_angle);
+    
     for (var i = 0; i < repeat_freq_length; i++) {
         let barHeight;
 
@@ -350,9 +340,8 @@ function draw() {
         ctx.fillStyle = ctx.strokeStyle = color_function(barHeight, i, freq_length);
 
         if (bars) {
-            bars_data.push([barHeight, ctx.fillStyle]);
-            //ctx.fillRect(bx - mx, canvas.height - barHeight - my, barWidth, barHeight);
-            //bx += barWidth;
+            ctx.fillRect(bx - 0.5 - mx, canvas.height - barHeight - my, barWidth + 0.5, barHeight);
+            bx += barWidth;
         }
 
         if (bounce) {
@@ -367,7 +356,7 @@ function draw() {
 
         ctx.beginPath();
 
-        const mult = (barHeight / (255 + (bounce ? prev_mean : 0))) * half_min_dim
+        const mult = (barHeight / (255 + (+bounce * prev_mean))) * half_min_dim
         let x = Math.sin(angle) * mult;
         let y = Math.cos(angle) * mult;
 
@@ -405,15 +394,6 @@ function draw() {
     mean /= freq_length;
     prev_mean = mean;
 
-    let bx = 0;
-    for (const bar of bars_data) {
-        const h = bar[0];
-        ctx.fillStyle = bar[1];
-        ctx.fillRect(bx - 0.5, canvas.height - h, barWidth + 0.5, h);
-        bx += barWidth;
-    }
-
-
     ctx.strokeStyle = "#eee";
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -434,10 +414,8 @@ function draw_wave() {
     ctx.lineWidth = 2;
     ctx.strokeStyle = strokeStyle;
 
-
     let angle = 0;
     let incr = Math.TAU / waveform.length;
-
 
     if (settings.round_wave) {
         ctx.translate(mx, my);
@@ -461,8 +439,9 @@ function draw_wave() {
         ctx.closePath();
     } else {
         let x = 0;
+        ctx.translate(0, my);
         for (let i = 0; i < waveform.length; i++) {
-            let y = waveform[i] / 128 * my;
+            let y = (waveform[i] - 128) / 128 * my;
 
             if (i === 0) {
                 ctx.moveTo(x, y);
