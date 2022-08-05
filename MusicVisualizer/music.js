@@ -1,4 +1,15 @@
+/*
+clearInterval(window.atimer);
+window.atimer = setInterval(() => {
+    settings.start_angle += Math.abs(mean_delta / 64);
+}, 1000/60);
+*/
+
 Math.TAU = Math.PI * 2;
+EventTarget.prototype.on = EventTarget.prototype.addEventListener;
+Object.defineProperty(EventTarget.prototype, "on", {
+    value: EventTarget.prototype.addEventListener,
+});
 
 /**
  * @template T
@@ -10,6 +21,7 @@ function createEventProxy(obj) {
     et.addEventListener = et.addEventListener.bind(et);
     et.removeEventListener = et.removeEventListener.bind(et);
     et.dispatchEvent = et.dispatchEvent.bind(et);
+    et.on = et.on.bind(et);
 
     return new Proxy(Object.assign(et, obj), {
         set: function (target, key, value) {
@@ -22,6 +34,154 @@ function createEventProxy(obj) {
         }
     });
 }
+
+const colorings = [
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return hexcolor([size, 255 - size, Math.round((index % array_length) / array_length * 255)]);
+    },
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return hexcolor([255 - size, size, Math.round((index % array_length) / array_length * 255)]);
+    },
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return hexcolor([Math.round((index % array_length) / array_length * 255), 255 - size, size]);
+    },
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return hexcolor([size, Math.round((index % array_length) / array_length * 255), 255 - size]);
+    },
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return hexcolor([255 - size, Math.round((index % array_length) / array_length * 255), size]);
+    },
+    (size, index, array_length) => {
+        size = Math.max(size, 1);
+        return hexcolor([Math.round((index % array_length) / array_length * 255), size, 255 - size]);
+    },
+    (size, index, array_length) => {
+        return "#" + ("0" + size.toString(16)).substr(-2).repeat(3);
+    },
+    (size, index, array_length) => {
+        let angle = Math.TAU * (index + audio.currentTime / audio.duration * array_length) / array_length;
+        return `hsl(${angle}rad, ${Math.min(((size / 255) * 100 + 50), 100)}%, 50%)`;
+    },
+    (size, index, array_length) => {
+        return `hsl(${size / 255 * Math.TAU}rad, 100%, 50%)`;
+    },
+    (size, index, array_length) => {
+        return `hsl(${(255 - size / 255) * Math.TAU}rad, 100%, 50%)`;
+    },
+    (size, index, array_length) => {
+        return `hsl(${((audio.currentTime / audio.duration * 255 + size) % 256) / 255 * Math.TAU}rad, 100%, 50%)`;
+    }
+];
+
+
+/**
+ * @typedef {Object} Setting
+ * @property {string} id
+ * @property {string} label
+ * @property {string} type
+ * @property {any} default
+ */
+
+/**
+ * @type {Setting[]}
+ */
+const settings_elements = [
+    {
+        id: "mirror",
+        type: "checkbox",
+        label: "Mirror",
+        default: false,
+    },
+    {
+        id: "fill",
+        type: "checkbox",
+        label: "Fill",
+        default: false,
+    },
+    {
+        id: "bars",
+        type: "checkbox",
+        label: "Bars",
+        default: false,
+    },
+    {
+        id: "bounce",
+        type: "checkbox",
+        label: "Bounce",
+        default: false,
+    },
+    {
+        id: "invert",
+        type: "checkbox",
+        label: "Invert",
+        default: false,
+    },
+    {
+        id: "waveform",
+        type: "checkbox",
+        label: "Waveform",
+        default: true,
+    },
+    {
+        id: "round_wave",
+        type: "checkbox",
+        label: "Round waveform",
+        default: true,
+    },
+    {
+        type: "separator",
+    },
+    {
+        id: "coloring_type",
+        type: "number",
+        label: "Coloring type",
+        default: 0,
+        min: 0,
+        max: colorings.length,
+    },
+    {
+        id: "frequency",
+        type: "number",
+        label: "Frequency rate",
+        default: 9,
+        min: 5,
+        max: 15,
+        step: 1,
+    },
+    {
+        id: "freq_percentage",
+        type: "number",
+        label: "Frequency %",
+        default: 2 / 3,
+        min: 0.00001,
+        max: 1,
+        step: 0.01,
+    },
+    {
+        type: "separator",
+    },
+    {
+        id: "min_height",
+        type: "number",
+        label: "Min height",
+        default: 30,
+    },
+    {
+        id: "repeat",
+        type: "number",
+        label: "Repeat",
+        default: 1,
+        min: 0.00001,
+    },
+    {
+        type: "separator",
+    }
+];
 
 const settings_target = {
     min_height: 30,
@@ -42,7 +202,7 @@ const settings_target = {
 const settings = createEventProxy(settings_target);
 
 settings.addEventListener("coloring_type", e => {
-    draw_data.color_function = coloring[Math.max(0, Math.min(coloring.length - 1, e.detail))];
+    draw_data.color_function = colorings[Math.max(0, Math.min(colorings.length - 1, e.detail))];
 });
 
 settings.addEventListener("frequency", e => {
@@ -89,92 +249,6 @@ function rgbcolor(rgb) {
     return "rgb(" + rgb.map(c => Math.round(c)).join(",") + ")";
 }
 
-const coloring = /*[
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#" + ("0" + size.toString(16)).substr(-2) + ("0" + (255 - size).toString(16)).substr(-2) + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#" + ("0" + (255 - size).toString(16)).substr(-2) + ("0" + size.toString(16)).substr(-2) + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#" + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2) + ("0" + (255 - size).toString(16)).substr(-2) + ("0" + size.toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#" + ("0" + size.toString(16)).substr(-2) + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2) + ("0" + (255 - size).toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#" + ("0" + (255 - size).toString(16)).substr(-2) + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2) + ("0" + size.toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        size = Math.max(size, 1);
-        return "#" + ("0" + Math.round((index % array_length) / array_length * 255).toString(16)).substr(-2) + ("0" + size.toString(16)).substr(-2) + ("0" + (255 - size).toString(16)).substr(-2);
-    },
-    (size, index, array_length) => {
-        return "#" + ("0" + size.toString(16)).substr(-2).repeat(3);
-    },
-    (size, index, array_length) => {
-        let angle = Math.TAU * (index + audio.currentTime / audio.duration * array_length) / array_length;
-        return `hsl(${angle}rad, ${Math.min(((size / 255) * 100 + 50), 100)}%, 50%)`;
-    },
-    (size, index, array_length) => {
-        return `hsl(${size / 255 * Math.TAU}rad, 100%, 50%)`;
-    },
-    (size, index, array_length) => {
-        return `hsl(${(255 - size / 255) * Math.TAU}rad, 100%, 50%)`;
-    },
-    (size, index, array_length) => {
-        return `hsl(${((audio.currentTime / audio.duration * 255 + size) % 256) / 255 * Math.TAU}rad, 100%, 50%)`;
-    }
-    //() => "#"+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)+("0"+Math.round(Math.random()*255).toString(16)).substr(-2)
-];*/
-    [
-        (size, index, array_length) => {
-            size = Math.max(size, 1);
-            return hexcolor([size, 255 - size, Math.round((index % array_length) / array_length * 255)]);
-        },
-        (size, index, array_length) => {
-            size = Math.max(size, 1);
-            return hexcolor([255 - size, size, Math.round((index % array_length) / array_length * 255)]);
-        },
-        (size, index, array_length) => {
-            size = Math.max(size, 1);
-            return hexcolor([Math.round((index % array_length) / array_length * 255), 255 - size, size]);
-        },
-        (size, index, array_length) => {
-            size = Math.max(size, 1);
-            return hexcolor([size, Math.round((index % array_length) / array_length * 255), 255 - size]);
-        },
-        (size, index, array_length) => {
-            size = Math.max(size, 1);
-            return hexcolor([255 - size, Math.round((index % array_length) / array_length * 255), size]);
-        },
-        (size, index, array_length) => {
-            size = Math.max(size, 1);
-            return hexcolor([Math.round((index % array_length) / array_length * 255), size, 255 - size]);
-        },
-        (size, index, array_length) => {
-            return "#" + ("0" + size.toString(16)).substr(-2).repeat(3);
-        },
-        (size, index, array_length) => {
-            let angle = Math.TAU * (index + audio.currentTime / audio.duration * array_length) / array_length;
-            return `hsl(${angle}rad, ${Math.min(((size / 255) * 100 + 50), 100)}%, 50%)`;
-        },
-        (size, index, array_length) => {
-            return `hsl(${size / 255 * Math.TAU}rad, 100%, 50%)`;
-        },
-        (size, index, array_length) => {
-            return `hsl(${(255 - size / 255) * Math.TAU}rad, 100%, 50%)`;
-        },
-        (size, index, array_length) => {
-            return `hsl(${((audio.currentTime / audio.duration * 255 + size) % 256) / 255 * Math.TAU}rad, 100%, 50%)`;
-        }
-    ];
-
 const draw_data = {
     repeat_freq_length: 0,
     barWidth: 0,
@@ -185,7 +259,7 @@ const draw_data = {
     /**
      * @type {(size: number, index: number, array_length: number) => string}
      */
-    color_function: coloring[0],
+    color_function: colorings[0],
 }
 
 function recalculate_draw_data() {
@@ -201,7 +275,47 @@ function recalculate_draw_data() {
     });
 }
 
-document.querySelectorAll("input[type=checkbox]").forEach(/** @param {HTMLInputElement} c */ c => {
+for (const element of settings_elements) {
+    if (element.type === "separator") {
+        document.body.appendChild(document.createElement("br"));
+    } else {
+        const id = element.id;
+        if (settings.hasOwnProperty(id)) {
+            const label = document.createElement("label");
+            label.innerText = element.label;
+            label.htmlFor = id;
+
+            const input = document.createElement("input");
+            input.type = element.type;
+            input.id = id;
+
+            if (["checkbox", "radio"].includes(element.type)) {
+                input.checked = element.default;
+
+                input.addEventListener("change", e => {
+                    settings[id] = input.checked;
+                });
+            } else {
+                input.value = element.default;
+            }
+
+            if (element.type === "number") {
+                input.min = element.min;
+                input.max = element.max;
+                input.step = element.step;
+
+                input.addEventListener("input", e => {
+                    settings[id] = parseFloat(input.value);
+                });
+            }
+
+            document.body.appendChild(label);
+            document.body.appendChild(input);
+        }
+    }
+}
+
+/*document.querySelectorAll("input[type=checkbox]").forEach(c => {
     const id = c.id;
     if (settings.hasOwnProperty(id)) {
         c.addEventListener("change", e => {
@@ -217,7 +331,7 @@ document.querySelectorAll("input[type=number]").forEach(n => {
             settings[id] = parseFloat(e.target.value);
         });
     }
-});
+});*/
 
 /** @type {HTMLCanvasElement} */
 const canvas = document.getElementById("canvas");
@@ -249,7 +363,7 @@ file_input.addEventListener("change", () => {
     audio.src = URL.createObjectURL(file_input.files[0]);
     audio.load();
 
-    if(!audio_data.analyser) {
+    if (!audio_data.analyser) {
         const audioContext = new AudioContext();
         const track = audioContext.createMediaElementSource(audio);
         const analyser = audioContext.createAnalyser();
@@ -280,7 +394,7 @@ window.ondragend = window.ondragover = e => {
 const load_button = document.getElementById("load");
 load_button.addEventListener("click", Start);
 
-
+let mean_delta = 0;
 let prev_mean = 0;
 
 let timer;
@@ -308,6 +422,9 @@ function draw() {
     const { frequencies, waveform, analyser } = audio_data;
 
     ctx.lineWidth = 1;
+    if (!fill) {
+        ctx.lineWidth = 4;
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     analyser.getByteFrequencyData(frequencies);
@@ -327,7 +444,7 @@ function draw() {
 
     ctx.save();
     ctx.translate(mx, my);
-    
+
     for (var i = 0; i < repeat_freq_length; i++) {
         let barHeight;
 
@@ -356,7 +473,7 @@ function draw() {
 
         ctx.beginPath();
 
-        const mult = (barHeight / (255 + (+bounce * prev_mean))) * half_min_dim
+        const mult = (barHeight / (255 + (+bounce * prev_mean))) * half_min_dim;
         let x = Math.sin(angle) * mult;
         let y = Math.cos(angle) * mult;
 
@@ -392,6 +509,7 @@ function draw() {
     ctx.restore();
 
     mean /= freq_length;
+    mean_delta = mean - prev_mean;
     prev_mean = mean;
 
     ctx.strokeStyle = "#eee";
@@ -441,7 +559,7 @@ function draw_wave() {
         let x = 0;
         ctx.translate(0, my);
         for (let i = 0; i < waveform.length; i++) {
-            let y = (waveform[i] - 128) / 128 * my;
+            let y = (waveform[i] - 128) / 256 * my;
 
             if (i === 0) {
                 ctx.moveTo(x, y);
