@@ -57,11 +57,15 @@
     top: var(--rbw);
     z-index: -1;
     /* calc(var(--tl) * 1.414 * 0.5)*/
+
+    --bwmult: calc(sqrt(2) * 0.5);
+    --bwoff: calc(var(--bw) - 0.3px);
+
     background: 
-        linear-gradient( 135deg, var(--bc) 0px calc(var(--tl) * 1.414 * 0.5 + var(--bw) - 0.3px), transparent 0px),
-        linear-gradient(-135deg, var(--bc) 0px calc(var(--tr) * 1.414 * 0.5 + var(--bw) - 0.3px), transparent 0px),
-        linear-gradient(  45deg, var(--bc) 0px calc(var(--bl) * 1.414 * 0.5 + var(--bw) - 0.3px), transparent 0px),
-        linear-gradient( -45deg, var(--bc) 0px calc(var(--br) * 1.414 * 0.5 + var(--bw) - 0.3px), transparent 0px);
+        linear-gradient( 135deg, var(--bc) 0px calc(var(--tl) * var(--bwmult) + var(--bwoff)), transparent 0px),
+        linear-gradient(-135deg, var(--bc) 0px calc(var(--tr) * var(--bwmult) + var(--bwoff)), transparent 0px),
+        linear-gradient(  45deg, var(--bc) 0px calc(var(--bl) * var(--bwmult) + var(--bwoff)), transparent 0px),
+        linear-gradient( -45deg, var(--bc) 0px calc(var(--br) * var(--bwmult) + var(--bwoff)), transparent 0px);
     
 }
 
