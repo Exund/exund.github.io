@@ -5,11 +5,19 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta http-equiv="X-UA-Compatible" content="ie=edge">
-	<title>Home</title>
+	<title>Ind-Ex</title>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron&family=Wallpoet">
+	<link rel="stylesheet" href="styles.css">
+	<link rel="icon" href="Ex favicon.svg" type="image/svg+xml">
+	<script>
+		/*window.CSS.registerProperty({
+			name: "--gradient-offset",
+			syntax: "<length-percentage>",
+			inherits: false,
+			initialValue: "0px",
+		});*/
+	</script>
 	<style>
-		* {
-			box-sizing: border-box;
-		}
 
 		html,
 		body {
@@ -19,19 +27,32 @@
 			max-height: 100%;
 			padding: 0;
 			margin: 0;
-			background-color: #202225;
+			background-color: #18191b;
 			color: white;
-			font-family: system-ui;
+			font-family: Orbitron;
+		}
+
+		h1 {
+			font-size: 3em;
 		}
 
 		a {
-			background-color: #40444b;
-			border-radius: 15px;
-			height: 30px;
 			text-decoration: none;
 			color: inherit;
-			padding: 5px;
-			width: 300px;
+			padding: 7px 7px;
+			width: 450px;
+			font-size: 1.5em;
+		}
+
+		a:hover {
+			animation-play-state: paused;
+		}
+		
+		.cut-corner {
+			--cut-top-left: 15px;
+			--cut-bottom-right: 15px;
+			--border-width: 3px;
+			--border-color: #ff4300;
 		}
 
 		.grid {
@@ -45,14 +66,32 @@
 </head>
 
 <body>
-	<div class="grid" style="top: 50%;position: relative;transform: translate(0, -50%);">
+	<div class="grid" style="top: 50%; position: relative; transform: translate(0, -50%);">
 		<h1>Exund's Pages</h1>
 		<div class="grid">
-			<a href="Splatoon Dialog/index.html">Splatoon Textbox Generator</a>
-			<a href="MusicVisualizer/index.html">Music Visualizer</a>
-			<a href="BadAppleCSS/index.html">BadCSS (Bad Apple)</a>
-		</div>
+			<a class="cut-corner glint" style="animation-delay: 0s;" href="Splatoon Dialog/index.html">Splatoon Textbox Generator</a>
+			<a class="cut-corner glint" style="animation-delay: -5s;" href="MusicVisualizer/index.html">Music Visualizer</a>
+			<a class="cut-corner glint" style="animation-delay: 2s;" href="BadAppleCSS/index.html">BadCSS (Bad Apple)</a>
+		</fieldset>
 	</div>
+
+	<!--<svg display="" width="100%" height="55px">
+		<defs>
+		  <filter id="simpleglitchfilter" color-interpolation-filters="sRGB" >
+			<feFlood width="100%" height="100%" flood-color="rgb(128, 0, 128)" result="BASE-COLOR" />
+			<feFlood width="100%" height="1px" y="0" flood-color="rgb(255, 0, 128)" result="X-TRANSFORM">
+			  <animate attributeName="y" values="-20%; 120%; -20%" dur="40s" repeatCount="indefinite"/>
+			</feFlood>
+			<feMerge result="MERGE">
+			  <feMergeNode in="BASE-COLOR" />
+			  <feMergeNode in="X-TRANSFORM" />
+			</feMerge>
+			<feDisplacementMap in="SourceGraphic" in2="MERGE" scale="8" xChannelSelector="R" yChannelSelector="B">
+			  <!--<animate attributeName="scale" values="-8; 5.5; 0; 8; 4.5; 7; -4; -9; 5; -5.5; 19; -8" dur="6s" repeatCount="indefinite" begin="0" />
+			</feDisplacementMap>
+		  </filter>
+		</defs>
+	  </svg>-->
 </body>
 
 </html>

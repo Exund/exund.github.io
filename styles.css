@@ -1,0 +1,81 @@
+@property --gradient-offset {
+    syntax: "<length-percentage>";
+    initial-value: 0px;
+    inherits: false;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+.cut-corner {
+    position: relative;
+    --bw: max(var(--border-width, 0px), 0px);
+    --bc: var(--border-color, transparent);
+
+    --all: max(var(--cut-all, 0px), 0px);
+
+    --tl: var(--cut-top-left, var(--all));
+    --tr: var(--cut-top-right, var(--all));
+    --bl: var(--cut-bottom-left, var(--all));
+    --br: var(--cut-bottom-right, var(--all));
+
+    clip-path: polygon(
+        var(--tl) 0,
+        calc(100% - var(--tr)) 0,
+        100% var(--tr),
+        100% calc(100% - var(--br)),
+        calc(100% - var(--br)) 100%,
+        var(--bl) 100%,
+        0 calc(100% - var(--bl)),
+        0 var(--tl)
+    );
+
+    /*clip-path: polygon(
+        calc(var(--tl) - var(--bw)) 0,
+        calc(100% - var(--tr) + var(--bw)) 0,
+        100% calc(var(--tr) - var(--bw)),
+        100% calc(100% - var(--br) + var(--bw)),
+        calc(100% - var(--br) + var(--bw)) 100%,
+        calc(var(--bl) - var(--bw)) 100%,
+        0 calc(100% - var(--bl) + var(--bw)),
+        0 calc(var(--tl) - var(--bw)) 
+    );*/
+
+    border: var(--bw) solid var(--bc);
+}
+
+.cut-corner::before {
+    content: "";
+    position: absolute;
+
+    --rbw: calc(var(--bw) * -1);
+
+    left: var(--rbw);
+    bottom: var(--rbw);
+    right: var(--rbw);
+    top: var(--rbw);
+    z-index: -1;
+    /* calc(var(--tl) * 1.414 * 0.5)*/
+    background: 
+        linear-gradient( 135deg, var(--bc) 0px calc(var(--tl) * 1.414 * 0.5 + var(--bw) - 0.3px), transparent 0px),
+        linear-gradient(-135deg, var(--bc) 0px calc(var(--tr) * 1.414 * 0.5 + var(--bw) - 0.3px), transparent 0px),
+        linear-gradient(  45deg, var(--bc) 0px calc(var(--bl) * 1.414 * 0.5 + var(--bw) - 0.3px), transparent 0px),
+        linear-gradient( -45deg, var(--bc) 0px calc(var(--br) * 1.414 * 0.5 + var(--bw) - 0.3px), transparent 0px);
+    
+}
+
+.glint {
+    background: linear-gradient(135deg, #34373d, #464a53 var(--gradient-offset), #34373d);
+    animation: glint 10s linear infinite alternate;
+}
+
+@keyframes glint {
+    from {
+        --gradient-offset: -50%;
+    }
+
+    to {
+        --gradient-offset: 150%;
+    }
+}
