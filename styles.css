@@ -4,7 +4,9 @@
     inherits: false;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
 }
 
@@ -20,16 +22,14 @@
     --bl: var(--cut-bottom-left, var(--all));
     --br: var(--cut-bottom-right, var(--all));
 
-    clip-path: polygon(
-        var(--tl) 0,
-        calc(100% - var(--tr)) 0,
-        100% var(--tr),
-        100% calc(100% - var(--br)),
-        calc(100% - var(--br)) 100%,
-        var(--bl) 100%,
-        0 calc(100% - var(--bl)),
-        0 var(--tl)
-    );
+    clip-path: polygon(var(--tl) 0,
+            calc(100% - var(--tr)) 0,
+            100% var(--tr),
+            100% calc(100% - var(--br)),
+            calc(100% - var(--br)) 100%,
+            var(--bl) 100%,
+            0 calc(100% - var(--bl)),
+            0 var(--tl));
 
     /*clip-path: polygon(
         calc(var(--tl) - var(--bw)) 0,
@@ -56,22 +56,43 @@
     right: var(--rbw);
     top: var(--rbw);
     z-index: -1;
-    /* calc(var(--tl) * 1.414 * 0.5)*/
 
     --bwmult: calc(sqrt(2) * 0.5);
     --bwoff: calc(var(--bw) - 0.3px);
 
-    background: 
-        linear-gradient( 135deg, var(--bc) 0px calc(var(--tl) * var(--bwmult) + var(--bwoff)), transparent 0px),
+    background:
+        linear-gradient(135deg, var(--bc) 0px calc(var(--tl) * var(--bwmult) + var(--bwoff)), transparent 0px),
         linear-gradient(-135deg, var(--bc) 0px calc(var(--tr) * var(--bwmult) + var(--bwoff)), transparent 0px),
-        linear-gradient(  45deg, var(--bc) 0px calc(var(--bl) * var(--bwmult) + var(--bwoff)), transparent 0px),
-        linear-gradient( -45deg, var(--bc) 0px calc(var(--br) * var(--bwmult) + var(--bwoff)), transparent 0px);
-    
+        linear-gradient(45deg, var(--bc) 0px calc(var(--bl) * var(--bwmult) + var(--bwoff)), transparent 0px),
+        linear-gradient(-45deg, var(--bc) 0px calc(var(--br) * var(--bwmult) + var(--bwoff)), transparent 0px);
+
 }
 
 .glint {
-    background: linear-gradient(135deg, #34373d, #464a53 var(--gradient-offset), #34373d);
+    --glint-bg: #34373d;
+    --glint-hl: #464a53;
+
+    --bg: var(--glint-bg);
+    --hl: var(--glint-hl);
+
+    background:
+        linear-gradient(135deg,
+            var(--bg) var(--gradient-offset),
+            var(--hl),
+            var(--bg) calc(var(--gradient-offset) + 50%));
     animation: glint 10s linear infinite alternate;
+}
+
+.glint:hover {
+    --bg: color-mix(in hsl, white 5%, var(--glint-bg));
+    --hl: color-mix(in hsl, white 5%, var(--glint-hl));
+    animation-play-state: running;
+}
+
+.glint:active {
+    --bg: color-mix(in hsl, black 5%, var(--glint-bg));
+    --hl: color-mix(in hsl, black 5%, var(--glint-hl));
+    animation-play-state: running;
 }
 
 @keyframes glint {
